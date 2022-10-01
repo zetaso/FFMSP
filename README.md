@@ -2,7 +2,7 @@
 GRASP and Genetic algorithms for the "Far From Most String Problem".
 
 
-# DESCRIPCION
+## DESCRIPCION
 	El programa debe compilarse y ejecutarse 
 	como sigue:
 
@@ -17,7 +17,7 @@ GRASP and Genetic algorithms for the "Far From Most String Problem".
 		eps es epsilon (flotante)
 		t es el tiempo en segundos
 
-# Ejemplo:
+### Ejemplo:
 	----------INPUT----------
 	Para 100 filas, 300 columnas y 
 	la instancia 001.
