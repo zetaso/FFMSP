@@ -1,9 +1,8 @@
 # FFMSP
 GRASP and Genetic algorithms for the "Far From Most String Problem".
 
--------- READ ME --------
 
-DESCRIPCION
+# DESCRIPCION
 	El programa debe compilarse y ejecutarse 
 	como sigue:
 
@@ -18,7 +17,7 @@ DESCRIPCION
 		eps es epsilon (flotante)
 		t es el tiempo en segundos
 
-	Ejemplo:
+# Ejemplo:
 	----------INPUT----------
 	Para 100 filas, 300 columnas y 
 	la instancia 001.
