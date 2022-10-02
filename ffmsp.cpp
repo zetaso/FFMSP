@@ -60,6 +60,27 @@ void parse_input(char* instance, int* n, int* m)
 		value[value_index++] = instance[i];
 	}
 }
+
+int check_score(char** sequences, int rows, int columns, char* solution)
+{
+	int score = 0;
+	int dif = 0;
+
+	for(int i = 0; i < rows; i++)
+	{
+		dif = 0;
+		for(int j = 0; j < columns; j++)
+		{
+			if(sequences[i][j] != solution[j])
+			{
+				dif++;
+				if(dif == char_goal)
+					score++;
+			}
+		}
+	}
+	return score;
+}
 	
 void greedy(char** sequences, int rows, int columns, char* solution)
 {
