@@ -13,10 +13,14 @@ char method;
 char alphabet[4];
 int char_goal;
 
+int accumulated_score;
 int best_score = -1;
 char *best_solution;
 
-int *col_indexes;
+int *col_indexes;		//indices de columnas en el orden a revisar
+bool *row_validity;		//viabilidad de los string para cumplir
+int *faults;			//array que contiene la cantidad de faltas (caracteres iguales a la solución) de cada string
+int *hits;				//array que contiene la cantidad de aciertos (caracteres distintos a la solución) de cada string
 
 int check_args(int argc, char* argv[])
 {
@@ -78,16 +82,18 @@ int check_score(char** sequences, int rows, int columns, char* solution)
 					score++;
 			}
 		}
-	}
+	}	
 	return score;
 }
-	
-void greedy(char** sequences, int rows, int columns, char* solution)
-{
-	vector<int> indexes;	//indices de strings que aun pueden cumplir
-	int faults[rows];		//array que contiene la cantidad de faltas (caracteres iguales a la solución) de cada string
-	int hits[rows];			//array que contiene la cantidad de aciertos (caracteres distintos a la solución) de cada string
 
+void local_search(char** sequences, int rows, int columns, char* solution)
+{
+	int start = rand() % columns;
+	int end = (start + rand() % columns) % columns;
+
+	//	AL DESCOMENTAR (y debugear) SE RECONTRUIRÁ ESTA PARTE DE LA SOLUCION EN ORDEN ALEATORIO
+	//	FIXEAR ESTE CODIGO:
+	/*
 	//randomizar la forma en que se revisan las columnas
 	for(int j = 0; j < columns; j++)
 		col_indexes[j] = j;
@@ -98,29 +104,46 @@ void greedy(char** sequences, int rows, int columns, char* solution)
 		col_indexes[j] = col_indexes[rand_index];
 		col_indexes[rand_index] = aux;
 	}
+	*/
 
 	//inicialización
 	for(int i = 0; i < rows; i++)
 	{
-		indexes.push_back(i);	//se inicializa con los indices de todos los strings
-		faults[i] = 0;
-		hits[i] = 0;
+		for(int j = start; j != end; j = (j + 1) % columns)
+		{
+			if(sequences[i][j] == solution[j])
+			{
+				hits[i]--;
+				if(!row_validity[i] && hits[i] < char_goal && faults[i] <= columns - char_goal)
+				{
+					row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
+					accumulated_score--;
+				}
+			}
+			else
+			{
+				faults[i]--;
+				if(!row_validity[i] && hits[i] < char_goal && faults[i] <= columns - char_goal)
+				{
+					row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
+					accumulated_score--;
+				}
+			}
+		}
 	}
 
-	//creación de una solución, columna por columna
-	int accumulated_score = 0;
-	for(int j = 0; j < columns; j++)
+	//edición de la solución, columna por columna
+	for(int j = start; j != end; j = (j + 1) % columns)
 	{
 		bool found_by_metric = false;
-		int actual_rows = indexes.size();
 		if(j >= char_goal)
 		{
 			int scores[4];
 			for(int k = 0; k < 4; k++)
 			{
 				scores[k] = accumulated_score;
-				for(int i = 0; i < actual_rows; i++)
-					if(alphabet[k] != sequences[indexes[i]][col_indexes[j]] && hits[indexes[i]] >= char_goal - 1)
+				for(int i = 0; i < rows; i++)
+					if(row_validity[i] && alphabet[k] != sequences[i][col_indexes[j]] && hits[i] >= char_goal - 1)
 						scores[k]++;
 			}
 			int highest_index = 0;
@@ -136,22 +159,23 @@ void greedy(char** sequences, int rows, int columns, char* solution)
 		if(!found_by_metric)
 		{
 			int instances[] = {0, 0, 0, 0};
-			for(int i = 0; i < actual_rows; i++)
-				switch(sequences[indexes[i]][col_indexes[j]])
-				{
-					case 'A':
-						instances[0]++;
-						break;
-					case 'C':
-						instances[1]++;
-						break;
-					case 'G':
-						instances[2]++;
-						break;
-					case 'T':
-						instances[3]++;
-						break;
-				}
+			for(int i = 0; i < rows; i++)
+				if(row_validity[i])
+					switch(sequences[i][col_indexes[j]])
+					{
+						case 'A':
+							instances[0]++;
+							break;
+						case 'C':
+							instances[1]++;
+							break;
+						case 'G':
+							instances[2]++;
+							break;
+						case 'T':
+							instances[3]++;
+							break;
+					}
 			int lowest_index = 0;
 			for(int i = 1; i < 4; i++)
 				if(instances[i] < instances[lowest_index])
@@ -167,12 +191,12 @@ void greedy(char** sequences, int rows, int columns, char* solution)
 			int selected = rand() % equals;
 			solution[col_indexes[j]] = alphabet[lowests[selected]];
 		}
-		for(int i = 0; i < indexes.size(); i++)
-			if(sequences[indexes[i]][col_indexes[j]] == solution[col_indexes[j]] && ++faults[indexes[i]] > columns - char_goal)
-				indexes.erase(indexes.begin() + i--);
-			else if(sequences[indexes[i]][col_indexes[j]] != solution[col_indexes[j]] && ++hits[indexes[i]] == char_goal)
+		for(int i = 0; i < rows; i++)
+			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]] && ++faults[i] > columns - char_goal)
+				row_validity[i--] = false;
+			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]] && ++hits[i] == char_goal)
 			{
-				indexes.erase(indexes.begin() + i--);
+				row_validity[i--] = false;
 				accumulated_score++;
 			}
 	}
@@ -184,16 +208,10 @@ void greedy(char** sequences, int rows, int columns, char* solution)
 			best_solution[j] = solution[j];
 	}
 }
-	
-void pgreedy(char** sequences, int rows, int columns, char* solution, float prob)
-{
-	vector<int> indexes;	//indices de strings que aun pueden cumplir
-	int faults[rows];		//array que contiene la cantidad de faltas (caracteres iguales a la solución) de cada string
-	int hits[rows];			//array que contiene la cantidad de aciertos (caracteres distintos a la solución) de cada string
 
+void greedy(char** sequences, int rows, int columns, char* solution)
+{
 	//randomizar la forma en que se revisan las columnas
-	for(int j = 0; j < columns; j++)
-		col_indexes[j] = j;
 	for(int j = 0; j < columns; j++)
 	{
 		int rand_index = j + rand() % (columns - j);
@@ -205,13 +223,109 @@ void pgreedy(char** sequences, int rows, int columns, char* solution, float prob
 	//inicialización
 	for(int i = 0; i < rows; i++)
 	{
-		indexes.push_back(i);	//se inicializa con los indices de todos los strings
+		row_validity[i] = true;
 		faults[i] = 0;
 		hits[i] = 0;
 	}
 
 	//creación de una solución, columna por columna
-	int accumulated_score = 0;
+	accumulated_score = 0;
+	for(int j = 0; j < columns; j++)
+	{
+		bool found_by_metric = false;
+		if(j >= char_goal)
+		{
+			int scores[4];
+			for(int k = 0; k < 4; k++)
+			{
+				scores[k] = accumulated_score;
+				for(int i = 0; i < rows; i++)
+					if(row_validity[i] && alphabet[k] != sequences[i][col_indexes[j]] && hits[i] >= char_goal - 1)
+						scores[k]++;
+			}
+			int highest_index = 0;
+			for(int i = 1; i < 4; i++)
+				if(scores[i] > scores[highest_index])
+					highest_index = i;
+			if(scores[highest_index] > accumulated_score)
+			{
+				solution[col_indexes[j]] = alphabet[highest_index];
+				found_by_metric = true;
+			}
+		}
+		if(!found_by_metric)
+		{
+			int instances[] = {0, 0, 0, 0};
+			for(int i = 0; i < rows; i++)
+				if(row_validity[i])
+					switch(sequences[i][col_indexes[j]])
+					{
+						case 'A':
+							instances[0]++;
+							break;
+						case 'C':
+							instances[1]++;
+							break;
+						case 'G':
+							instances[2]++;
+							break;
+						case 'T':
+							instances[3]++;
+							break;
+					}
+			int lowest_index = 0;
+			for(int i = 1; i < 4; i++)
+				if(instances[i] < instances[lowest_index])
+					lowest_index = i;
+			int lowests[4];
+			int equals = 0;
+			for(int i = 0; i < 4; i++)
+				if(instances[i] == instances[lowest_index])
+				{
+					lowests[equals] = i;
+					equals++;
+				}
+			int selected = rand() % equals;
+			solution[col_indexes[j]] = alphabet[lowests[selected]];
+		}
+		for(int i = 0; i < rows; i++)
+			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]] && ++faults[i] > columns - char_goal)
+				row_validity[i--] = false;
+			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]] && ++hits[i] == char_goal)
+			{
+				row_validity[i--] = false;
+				accumulated_score++;
+			}
+	}
+	if(accumulated_score > best_score)
+	{
+		best_score = accumulated_score;
+		for(int j = 0; j < columns; j++)
+			best_solution[j] = solution[j];
+	}
+}
+
+void pgreedy(char** sequences, int rows, int columns, char* solution, float prob)
+{
+	//randomizar la forma en que se revisan las columnas
+	for(int j = 0; j < columns; j++)
+	{
+		int rand_index = j + rand() % (columns - j);
+		int aux = col_indexes[j];
+		col_indexes[j] = col_indexes[rand_index];
+		col_indexes[rand_index] = aux;
+	}
+
+	//inicialización
+	for(int i = 0; i < rows; i++)
+	{
+		row_validity[i] = true;
+		faults[i] = 0;
+		hits[i] = 0;
+	}
+
+	//creación de una solución, columna por columna
+	accumulated_score = 0;
 	for(int j = 0; j < columns; j++)
 	{
 		double random = rand() / double(RAND_MAX);
@@ -220,15 +334,14 @@ void pgreedy(char** sequences, int rows, int columns, char* solution, float prob
 		else
 		{
 			bool found_by_metric = false;
-			int actual_rows = indexes.size();
 			if(j >= char_goal)
 			{
 				int scores[4];
 				for(int k = 0; k < 4; k++)
 				{
 					scores[k] = accumulated_score;
-					for(int i = 0; i < actual_rows; i++)
-						if(alphabet[k] != sequences[indexes[i]][col_indexes[j]] && hits[indexes[i]] >= char_goal - 1)
+					for(int i = 0; i < rows; i++)
+						if(row_validity[i] && alphabet[k] != sequences[i][col_indexes[j]] && hits[i] >= char_goal - 1)
 							scores[k]++;
 				}
 				int highest_index = 0;
@@ -244,22 +357,23 @@ void pgreedy(char** sequences, int rows, int columns, char* solution, float prob
 			if(!found_by_metric)
 			{
 				int instances[] = {0, 0, 0, 0};
-				for(int i = 0; i < actual_rows; i++)
-					switch(sequences[indexes[i]][col_indexes[j]])
-					{
-						case 'A':
-							instances[0]++;
-							break;
-						case 'C':
-							instances[1]++;
-							break;
-						case 'G':
-							instances[2]++;
-							break;
-						case 'T':
-							instances[3]++;
-							break;
-					}
+				for(int i = 0; i < rows; i++)
+					if(row_validity[i])
+						switch(sequences[i][col_indexes[j]])
+						{
+							case 'A':
+								instances[0]++;
+								break;
+							case 'C':
+								instances[1]++;
+								break;
+							case 'G':
+								instances[2]++;
+								break;
+							case 'T':
+								instances[3]++;
+								break;
+						}
 				int lowest_index = 0;
 				for(int i = 1; i < 4; i++)
 					if(instances[i] < instances[lowest_index])
@@ -276,12 +390,12 @@ void pgreedy(char** sequences, int rows, int columns, char* solution, float prob
 				solution[col_indexes[j]] = alphabet[lowests[selected]];
 			}
 		}
-		for(int i = 0; i < indexes.size(); i++)
-			if(sequences[indexes[i]][col_indexes[j]] == solution[col_indexes[j]] && ++faults[indexes[i]] > columns - char_goal)
-				indexes.erase(indexes.begin() + i--);
-			else if(sequences[indexes[i]][col_indexes[j]] != solution[col_indexes[j]] && ++hits[indexes[i]] >= char_goal)
+		for(int i = 0; i < rows; i++)
+			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]] && ++faults[i] > columns - char_goal)
+				row_validity[i--] = false;
+			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]] && ++hits[i] == char_goal)
 			{
-				indexes.erase(indexes.begin() + i--);
+				row_validity[i--] = false;
 				accumulated_score++;
 			}
 	}
@@ -322,12 +436,17 @@ int main(int argc, char* argv[])
 	char_goal = int(stof(argv[4]) * columns);
 
 	col_indexes = (int*) malloc(columns * sizeof(int));
+	for(int j = 0; j < columns; j++)
+		col_indexes[j] = j;
+
+	row_validity = (bool*) malloc(rows * sizeof(bool));
+	hits = (int*) malloc(columns * sizeof(int));
+	faults = (int*) malloc(columns * sizeof(int));
+
 	char **sequences = (char**) malloc(rows * sizeof(char*));
-	for (int i = 0; i < columns; ++i)
-	{
+	for (int i = 0; i < rows; ++i)
 		sequences[i] = (char*) malloc(columns * sizeof(char));
-		col_indexes[i] = i;
-	}
+
 	char *solution = (char*) malloc(columns * sizeof(char));
 	best_solution = (char*) malloc(columns * sizeof(char));
 
@@ -359,6 +478,8 @@ int main(int argc, char* argv[])
 			greedy(sequences, rows, columns, solution);
 		else
 			pgreedy(sequences, rows, columns, solution, probability);
+
+		local_search(sequences, rows, columns, solution);
 
 		clock_t end = clock();
 		total = (float) (end - start) / CLOCKS_PER_SEC;
