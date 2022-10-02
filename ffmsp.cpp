@@ -91,7 +91,7 @@ void local_search(char** sequences, int rows, int columns, char* solution)
 	int start = rand() % columns;
 	int end = (start + rand() % columns) % columns;
 
-	//	AL DESCOMENTAR (y debugear) SE RECONTRUIRÁ ESTA PARTE DE LA SOLUCION EN ORDEN ALEATORIO
+	//	AL DESCOMENTAR (y debugear) SE RECONSTRUIRÁ ESTA PARTE DE LA SOLUCION EN ORDEN ALEATORIO
 	//	FIXEAR ESTE CODIGO:
 	/*
 	//randomizar la forma en que se revisan las columnas
