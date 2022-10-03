@@ -6,8 +6,8 @@ GRASP and Genetic algorithms for the "Far From Most String Problem".
 	El programa debe compilarse y ejecutarse 
 	como sigue:
 
-	$ g++ ffmsp.cpp -o ffmsp
-	$ ./ffmsp -i [XXX-YYY-ZZZ] -th [tr] [eps] [t]
+	$ g++ ffmsp.cpp -o grasp
+	$ ./grasp -i [XXX-YYY-ZZZ].txt -th [tr] [eps] [t]
 
 	donde:
 		X es la cantidad de filas
@@ -22,7 +22,7 @@ GRASP and Genetic algorithms for the "Far From Most String Problem".
 	Para 100 filas, 300 columnas y 
 	la instancia 001.
 
-	$ ./ffmsp -i 100-300-001 -th 0.85 0.1 10
+	$ ./grasp -i 100-300-001.txt -th 0.85 0.1 10
 
 
 	----------OUTPUT----------

@@ -22,6 +22,8 @@ bool *row_validity;		//viabilidad de los string para cumplir
 int *faults;			//array que contiene la cantidad de faltas (caracteres iguales a la solución) de cada string
 int *hits;				//array que contiene la cantidad de aciertos (caracteres distintos a la solución) de cada string
 
+vector<char> *empatados;
+
 int check_args(int argc, char* argv[])
 {
 	if(argc < 5)
@@ -91,6 +93,7 @@ void local_search(char** sequences, int rows, int columns, char* solution)
 	int start = rand() % columns;
 	int end = (start + rand() % columns) % columns;
 
+
 	//	AL DESCOMENTAR (y debugear) SE RECONSTRUIRÁ ESTA PARTE DE LA SOLUCION EN ORDEN ALEATORIO
 	//	FIXEAR ESTE CODIGO:
 	/*
@@ -106,23 +109,21 @@ void local_search(char** sequences, int rows, int columns, char* solution)
 	}
 	*/
 
-	//inicialización
-	for(int i = 0; i < rows; i++)
+	// Revertimos la métrica
+	
+	for(int j = start; j != end; j = (j + 1) % columns)
 	{
-		for(int j = start; j != end; j = (j + 1) % columns)
+		for(int i = 0; i < rows; i++)
 		{
 			if(sequences[i][j] == solution[j])
 			{
-				hits[i]--;
+				faults[i]--;
 				if(!row_validity[i] && hits[i] < char_goal && faults[i] <= columns - char_goal)
-				{
 					row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
-					accumulated_score--;
-				}
 			}
 			else
 			{
-				faults[i]--;
+				hits[i]--;
 				if(!row_validity[i] && hits[i] < char_goal && faults[i] <= columns - char_goal)
 				{
 					row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
@@ -193,10 +194,10 @@ void local_search(char** sequences, int rows, int columns, char* solution)
 		}
 		for(int i = 0; i < rows; i++)
 			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]] && ++faults[i] > columns - char_goal)
-				row_validity[i--] = false;
+				row_validity[i] = false;
 			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]] && ++hits[i] == char_goal)
 			{
-				row_validity[i--] = false;
+				row_validity[i] = false;
 				accumulated_score++;
 			}
 	}
@@ -208,6 +209,17 @@ void local_search(char** sequences, int rows, int columns, char* solution)
 			best_solution[j] = solution[j];
 	}
 }
+
+/* 
+	Recorre las posiciones j y cambia las posiciones que empataron por otra opción disponible
+*/
+void local_search_empates(char** sequences, int rows, int columns, char* solution){
+	for(int j = 0; j < columns; j++){
+		solution[j] = empatados[j].at(0);
+		empatados[j].erase(empatados[j].begin());
+	}
+}
+
 
 void greedy(char** sequences, int rows, int columns, char* solution)
 {
@@ -286,6 +298,11 @@ void greedy(char** sequences, int rows, int columns, char* solution)
 					equals++;
 				}
 			int selected = rand() % equals;
+			for(int i = 0; i < equals; i++){
+				if(i != selected){
+					empatados[col_indexes[j]].push_back(alphabet[lowests[i]]);
+				}
+			}
 			solution[col_indexes[j]] = alphabet[lowests[selected]];
 		}
 		for(int i = 0; i < rows; i++)
@@ -449,6 +466,8 @@ int main(int argc, char* argv[])
 
 	char *solution = (char*) malloc(columns * sizeof(char));
 	best_solution = (char*) malloc(columns * sizeof(char));
+
+	empatados = (vector<char>*) malloc(columns * sizeof(vector<char>));
 
 	alphabet[0] = 'A';
 	alphabet[1] = 'C';
