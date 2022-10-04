@@ -513,7 +513,7 @@ int main(int argc, char* argv[])
 	alphabet[3] = 'T';
 
 	string instance_name(argv[2]);
-	fstream file("datasets/" + instance_name);
+	fstream file("datasets/" + instance_name + ".txt");
 
 	string current;
 	for(int i = 0; getline(file, current) && i < rows; i++)
