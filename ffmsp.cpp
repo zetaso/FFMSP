@@ -200,11 +200,11 @@ void local_search(char** sequences, int rows, int columns, char* solution)
 	}
 }
 
-/* 
-	Recorre las posiciones j y cambia las posiciones que empataron por otra opción disponible
-*/
 void local_search_empates(char** sequences, int rows, int columns, char* solution)
 {
+	/* 
+		Recorre las posiciones j y cambia las posiciones que empataron por otra opción disponible
+	*/
 	for(int j = 0; j < columns; j++)
 	{
 		if(empatados[col_indexes[j]].size() > 0)
