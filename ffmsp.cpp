@@ -27,19 +27,22 @@ int check_args(int argc, char* argv[])
 {
 	if(argc < 5)
 	{
-		cout << "error: muy pocos parametros" << endl;
+		cout << "Error: muy pocos parametros" << endl;
 		return 1;
 	}
-	else if(strcmp(argv[1], "-i"))
+
+	if(strcmp(argv[1], "-i"))
 	{
-		cout << "error: no hay instancia" << endl;
+		cout << "Error: no hay instancia" << endl;
 		return 1;
 	}
-	else if(strcmp(argv[3], "-th"))
+
+	if(strcmp(argv[3], "-th"))
 	{
-		cout << "error: no hay threshold" << endl;
+		cout << "Error: no hay threshold" << endl;
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -467,24 +470,26 @@ int main(int argc, char* argv[])
 	if(check_args(argc, argv))
 		return 1;
 
-	float run_time = 0.1;
-	float probability = 0;
-	method = 0;
-
-	if(argc >= 6)
-	{
-		probability = stof(argv[5]);
-		if(probability > 0)
-			method = 1;
-	}
-
-	if(argc >= 7)
-		run_time = stof(argv[6]);
-
 	int rows, columns;
 	parse_input(argv[2], &rows, &columns);
 
 	char_goal = int(stof(argv[4]) * columns);
+
+	float run_time = 0.1;
+	float probability = 0;
+	method = 0;
+
+	for(int i = 5; i < argc-1; i+=2){
+
+		if(strcmp(argv[i], "-p") == 0){
+			probability = stof(argv[i+1]);
+			if(probability > 0)
+				method = 1;
+		}
+		else if(strcmp(argv[i], "-t") == 0){
+			run_time = stof(argv[i+1]);
+		}
+	}
 
 	col_indexes = (int*) malloc(columns * sizeof(int));
 	for(int j = 0; j < columns; j++)
@@ -500,7 +505,7 @@ int main(int argc, char* argv[])
 
 	char *solution = (char*) malloc(columns * sizeof(char));
 
-	empatados = new vector<char>[columns];
+	empatados = (vector<char>*) malloc(columns * sizeof(vector<char>));
 
 	alphabet[0] = 'A';
 	alphabet[1] = 'C';
