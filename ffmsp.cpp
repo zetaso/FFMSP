@@ -505,7 +505,7 @@ int main(int argc, char* argv[])
 
 	char *solution = (char*) malloc(columns * sizeof(char));
 
-	empatados = (vector<char>*) malloc(columns * sizeof(vector<char>));
+	empatados = new vector<char>[columns];
 
 	alphabet[0] = 'A';
 	alphabet[1] = 'C';
