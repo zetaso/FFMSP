@@ -10,6 +10,7 @@
 using namespace std;
 
 char method;
+int tuning = 0;
 char alphabet[4];
 int char_goal;
 
@@ -488,6 +489,9 @@ int main(int argc, char* argv[])
 		}
 		else if(strcmp(argv[i], "-t") == 0){
 			run_time = stof(argv[i+1]);
+		}
+		else if(strcmp(argv[i], "-tuning") == 0){
+			tuning = atoi(argv[i+1]);
 		}
 	}
 
