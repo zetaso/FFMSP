@@ -567,7 +567,6 @@ int main(int argc, char* argv[])
 	free(sequences);
 
 	free(solution);
-	free(empatados);
 
 	return 0;
 }
