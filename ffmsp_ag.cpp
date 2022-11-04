@@ -89,7 +89,6 @@ int check_score(char** sequences, int rows, int columns, char* solution)
 				}
 			}
 	}
-	//cout << score << endl;
 	return score;
 }
 
@@ -308,6 +307,8 @@ void pgreedy(char** sequences, int rows, int columns, char* solution, float prob
 
 int best_of(int first_id, char* first, int second_id, char* second, int columns)
 {
+	// por optimizar, la métrica de cada solución se almacena
+	// en la última posición del array que la representa
 	if(first[columns] > second[columns])
 		return first_id;
 	else if(first[columns] < second[columns])
@@ -318,7 +319,7 @@ int best_of(int first_id, char* first, int second_id, char* second, int columns)
 
 void recombine(char* first, char* second, char* first_child, char* second_child, int columns)
 {
-	int pivot = columns / 2;
+	int pivot = rand() % columns;
 	for (int i = 0; i < columns; i++)
 	{
 		if(i < pivot)
@@ -337,9 +338,7 @@ void recombine(char* first, char* second, char* first_child, char* second_child,
 void copy_into(char* src, char* dst, int columns)
 {
 	for (int i = 0; i <= columns; i++)
-	{
 		dst[i] = src[i];
-	}
 }
 
 void mutate(char* solution, int columns)
@@ -425,19 +424,28 @@ int main(int argc, char* argv[])
 
 	float total = 0;
 
-	if(method == 0)
-		cout << "greedy" << endl;
-	else
-		cout << "pgreedy" << endl;
+	int best_index;
+	float best_time;
 
 	for (int i = 0; i < max_solutions; ++i)
+	{
 		if(method == 0)
 			greedy(sequences, rows, columns, solutions[i]);
 		else
 			pgreedy(sequences, rows, columns, solutions[i], probability);
 
-	int best_index;
-	float best_time;
+		clock_t end = clock();
+		total = (float) (end - start) / CLOCKS_PER_SEC;
+
+		if(accumulated_score > last_score)
+		{
+			last_score = accumulated_score;
+			best_index = i;
+			best_time = total;
+		}
+	}
+	
+	cout << (int) solutions[best_index][columns] << " - " << fixed << setprecision(2) << best_time << endl;
 
 	while(total < run_time)
 	{
@@ -467,11 +475,11 @@ int main(int argc, char* argv[])
 		recombine(solutions[bests[0]], solutions[bests[1]], children[0], children[1], columns);
 		
 		double random = rand() / double(RAND_MAX);
-		if(random <= (double) 0.05)
+		if(random <= (double) 0.15)
 			mutate(children[0], columns);
 		
 		random = rand() / double(RAND_MAX);
-		if(random <= (double) 0.05)
+		if(random <= (double) 0.15)
 			mutate(children[1], columns);
 
 		children[0][columns] = check_score(sequences, rows, columns, children[0]);
@@ -479,7 +487,7 @@ int main(int argc, char* argv[])
 
 		int first_worst = 0;
 		int second_worst = 1;
-		for (int i = 2; i < rows; i++)
+		for (int i = 2; i < max_solutions; i++)
 		{
 			if(solutions[i][columns] > solutions[first_worst][columns])
 			{
@@ -513,13 +521,14 @@ int main(int argc, char* argv[])
 		}
 		if(solutions[second_worst][columns] > last_score)
 		{
+			best_index = first_worst;
+			best_time = total;
 			cout << (int) solutions[second_worst][columns] << " - " << fixed << setprecision(2) << total << endl;
 			last_score = (int) solutions[second_worst][columns];
 		}
 	}
 
-	cout << "best: " << (int) solutions[best_index][columns] << " - " << fixed << setprecision(2) << best_time << endl;
-	cout << "solution: " << endl;
+	cout << endl << (int) solutions[best_index][columns] << " - " << fixed << setprecision(2) << best_time << endl;
 	for (int i = 0; i < columns; i++)
 	{
 		cout << solutions[best_index][i];
