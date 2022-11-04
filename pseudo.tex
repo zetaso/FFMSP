@@ -1,0 +1,51 @@
+t_ejec <- 0 (tiempo de ejecucion actual)
+solutions <- define una lista de strings soluciones
+padres[4] <- lista temporal de 4 soluciones
+torneoA[2] <- lista temporal de 2 soluciones
+torneoB[2] <- lista temporal de 2 soluciones
+
+for i <- 0 to population_size do
+    if method == 0 then
+        solutions[i] <- greedy()
+    else then
+        solutions[i] <- pgreedy()
+    i <- i+1
+    
+while t_ejec < t then
+    padres <- elegimos 4 soluciones distintas aleatoriamente
+    torneoA <- elegimos las primeras 2 soluciones de padres
+    torneoB <- elegimos las ultimas 2 soluciones de padres
+
+    padreA <- buscamos la mejor solucion de torneoA
+    padreB <- buscamos la mejor solucion de torneoB
+    hijoA <- solucion auxiliar
+    hijoB <- solucion auxiliar
+
+    peores[2] <- lista de soluciones auxiliares
+
+    pivot <- valor aleatorio entre 0 y columns-1
+	for i <- 0 to columns do
+		if i < pivot then
+            hijoA[i] <- padreA[i]
+			hijoB[i] <- padreB[i]
+		else then
+            hijoA[i] <- padreB[i]
+			hijoB[i] <- padreA[i]
+        i <- i+1
+
+    rand_pos <- valor aleatorio entre 0 y columns-1
+    Con una determinada probabilidad se reemplaza
+    el caracter en hijoA[rand_pos] por A, T, G o C.
+
+    rand_pos <- valor aleatorio entre 0 y columns-1
+    Con una determinada probabilidad se reemplaza
+    el caracter en hijoB[rand_pos] por A, T, G o C.
+
+    peores <- buscamos las 2 peores soluciones
+    if score(hijoA) > score(peores[0]) then
+        peores[0] <- hijoA
+
+    if score(hijoB) > score(peores[1]) then
+        peores[1] <- hijoB
+
+    t_ejec <- t_ejec + delta_t

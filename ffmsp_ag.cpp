@@ -362,7 +362,7 @@ int main(int argc, char* argv[])
 
 	float run_time = 0.1;
 	float probability = 0;
-	int max_solutions = 0;
+	int population_size = 0;
 	method = 0;
 
 	for(int i = 5; i < argc-1; i+=2){
@@ -373,9 +373,9 @@ int main(int argc, char* argv[])
 				method = 1;
 		}
 		else if(strcmp(argv[i], "-ms") == 0){
-			max_solutions = stof(argv[i+1]);
-			if(max_solutions < 4)
-				max_solutions = 4;
+			population_size = stof(argv[i+1]);
+			if(population_size < 4)
+				population_size = 4;
 		}
 		else if(strcmp(argv[i], "-t") == 0){
 			run_time = stof(argv[i+1]);
@@ -397,8 +397,8 @@ int main(int argc, char* argv[])
 	for (int i = 0; i < rows; ++i)
 		sequences[i] = (char*) malloc(columns * sizeof(char));
 
-	char **solutions = (char**) malloc(max_solutions * sizeof(char*));
-	for (int i = 0; i < max_solutions; ++i)
+	char **solutions = (char**) malloc(population_size * sizeof(char*));
+	for (int i = 0; i < population_size; ++i)
 		solutions[i] = (char*) malloc((1 + columns) * sizeof(char));
 
 	char **children = (char**) malloc(2 * sizeof(char*));
@@ -427,7 +427,7 @@ int main(int argc, char* argv[])
 	int best_index;
 	float best_time;
 
-	for (int i = 0; i < max_solutions; ++i)
+	for (int i = 0; i < population_size; ++i)
 	{
 		if(method == 0)
 			greedy(sequences, rows, columns, solutions[i]);
@@ -455,7 +455,7 @@ int main(int argc, char* argv[])
 			bool different = true;
 			do
 			{
-				parents[i] = rand() % max_solutions;
+				parents[i] = rand() % population_size;
 				for (int j = 0; j < i; j++)
 				{
 					if(parents[i] == parents[j])
@@ -487,7 +487,7 @@ int main(int argc, char* argv[])
 
 		int first_worst = 0;
 		int second_worst = 1;
-		for (int i = 2; i < max_solutions; i++)
+		for (int i = 2; i < population_size; i++)
 		{
 			if(solutions[i][columns] > solutions[first_worst][columns])
 			{
@@ -544,7 +544,7 @@ int main(int argc, char* argv[])
 		free(sequences[i]);
 	free(sequences);
 
-	for (int i = 0; i < max_solutions; ++i)
+	for (int i = 0; i < population_size; ++i)
 		free(solutions[i]);
 	free(solutions);
 
