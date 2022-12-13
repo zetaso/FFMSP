@@ -89,123 +89,7 @@ int check_score(char** sequences, int rows, int columns, char* solution)
 
 void local_search(char** sequences, int rows, int columns, char* solution)
 {
-	int start = rand() % columns;
-	int end = (start + rand() % columns) % columns;
-
-
-	//	AL DESCOMENTAR (y debugear) SE RECONSTRUIRÁ ESTA PARTE DE LA SOLUCION EN ORDEN ALEATORIO
-	//	FIXEAR ESTE CODIGO:
-	/*
-	//randomizar la forma en que se revisan las columnas
-	for(int j = 0; j < columns; j++)
-		col_indexes[j] = j;
-	for(int j = 0; j < columns; j++)
-	{
-		int rand_index = j + rand() % (columns - j);
-		int aux = col_indexes[j];
-		col_indexes[j] = col_indexes[rand_index];
-		col_indexes[rand_index] = aux;
-	}
-	*/
-
-	// Revertimos la métrica
-	for(int j = start; j != end; j = (j + 1) % columns)
-	{
-		for(int i = 0; i < rows; i++)
-		{
-			if(sequences[i][j] == solution[j])
-			{
-				faults[i]--;
-				if(!row_validity[i] && hits[i] < char_goal && faults[i] <= columns - char_goal)
-					row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
-			}
-			else
-			{
-				hits[i]--;
-				if(!row_validity[i] && hits[i] < char_goal && hits[i] < char_goal)
-				{
-					row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
-					accumulated_score--;
-				}
-			}
-		}
-	}
-
-	//edición de la solución, columna por columna
-	for(int j = start; j != end; j = (j + 1) % columns)
-	{
-		bool found_by_metric = false;
-		if(j >= char_goal)
-		{
-			int scores[4];
-			for(int k = 0; k < 4; k++)
-			{
-				scores[k] = accumulated_score;
-				for(int i = 0; i < rows; i++)
-					if(row_validity[i] && alphabet[k] != sequences[i][col_indexes[j]] && hits[i] >= char_goal - 1)
-						scores[k]++;
-			}
-			int highest_index = 0;
-			for(int i = 1; i < 4; i++)
-				if(scores[i] > scores[highest_index])
-					highest_index = i;
-			if(scores[highest_index] > accumulated_score)
-			{
-				solution[col_indexes[j]] = alphabet[highest_index];
-				found_by_metric = true;
-			}
-		}
-		if(!found_by_metric)
-		{
-			int instances[] = {0, 0, 0, 0};
-			for(int i = 0; i < rows; i++)
-				if(row_validity[i])
-					switch(sequences[i][col_indexes[j]])
-					{
-						case 'A':
-							instances[0]++;
-							break;
-						case 'C':
-							instances[1]++;
-							break;
-						case 'G':
-							instances[2]++;
-							break;
-						case 'T':
-							instances[3]++;
-							break;
-					}
-			int lowest_index = 0;
-			for(int i = 1; i < 4; i++)
-				if(instances[i] < instances[lowest_index])
-					lowest_index = i;
-			int lowests[4];
-			int equals = 0;
-			for(int i = 0; i < 4; i++)
-				if(instances[i] == instances[lowest_index])
-				{
-					lowests[equals] = i;
-					equals++;
-				}
-			int selected = rand() % equals;
-			solution[col_indexes[j]] = alphabet[lowests[selected]];
-		}
-		for(int i = 0; i < rows; i++)
-			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]] && ++faults[i] > columns - char_goal)
-				row_validity[i] = false;
-			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]] && ++hits[i] == char_goal)
-			{
-				row_validity[i] = false;
-				accumulated_score++;
-			}
-	}
-}
-
-void local_search_empates(char** sequences, int rows, int columns, char* solution)
-{
-	/* 
-		Recorre las posiciones j y cambia las posiciones que empataron por otra opción disponible
-	*/
+	// Recorre las posiciones j y cambia las posiciones que empataron por otra opción disponible
 	for(int j = 0; j < columns; j++)
 	{
 		if(empatados[col_indexes[j]].size() > 0)
@@ -249,126 +133,6 @@ void local_search_empates(char** sequences, int rows, int columns, char* solutio
 					}
 				}
 		}
-	}
-}
-
-void greedy(char** sequences, int rows, int columns, char* solution)
-{
-	//randomizar la forma en que se revisan las columnas
-	for(int j = 0; j < columns; j++)
-	{
-		int rand_index = j + rand() % (columns - j);
-		int aux = col_indexes[j];
-		col_indexes[j] = col_indexes[rand_index];
-		col_indexes[rand_index] = aux;
-	}
-
-	//inicialización
-	for(int i = 0; i < rows; i++)
-	{
-		row_validity[i] = true;
-		faults[i] = 0;
-		hits[i] = 0;
-	}
-
-	//creación de una solución, columna por columna
-	accumulated_score = 0;
-	for(int j = 0; j < columns; j++)
-	{
-		double random = rand() / double(RAND_MAX);
-		if(random <= (double) prob)
-			solution[col_indexes[j]] = alphabet[rand() % 4];
-		else
-		{
-			bool found_by_metric = false;
-			if(j >= char_goal)
-			{
-				int upgrades[4];
-				for(int k = 0; k < 4; k++)
-				{
-					upgrades[k] = 0;
-					for(int i = 0; i < rows; i++)
-						if(row_validity[i] && alphabet[k] != sequences[i][col_indexes[j]] && hits[i] + 1 >= char_goal)
-							upgrades[k]++;
-				}
-				int highest_index = 0;
-				for(int i = 1; i < 4; i++)
-					if(upgrades[i] > upgrades[highest_index])
-						highest_index = i;
-				int highests[4];
-				int equals = 0;
-				for(int i = 0; i < 4; i++)
-					if(upgrades[i] == upgrades[highest_index])
-					{
-						highests[equals] = i;
-						equals++;
-					}
-				if(upgrades[highest_index] > 0)
-				{
-					int selected = rand() % equals;
-					solution[col_indexes[j]] = alphabet[highests[selected]];
-					found_by_metric = true;
-				}
-			}
-
-			if(!found_by_metric)
-			{
-				int instances[] = {0, 0, 0, 0};
-				for(int i = 0; i < rows; i++)
-					if(row_validity[i])
-						switch(sequences[i][col_indexes[j]])
-						{
-							case 'A':
-								instances[0]++;
-								break;
-							case 'C':
-								instances[1]++;
-								break;
-							case 'G':
-								instances[2]++;
-								break;
-							case 'T':
-								instances[3]++;
-								break;
-						}
-				int lowest_index = 0;
-				for(int i = 1; i < 4; i++)
-					if(instances[i] < instances[lowest_index])
-						lowest_index = i;
-				int lowests[4];
-				int equals = 0;
-				for(int i = 0; i < 4; i++)
-					if(instances[i] == instances[lowest_index])
-					{
-						lowests[equals] = i;
-						equals++;
-					}
-				int selected = rand() % equals;
-
-				empatados[col_indexes[j]].clear();
-				for(int i = 0; i < equals; i++)
-					if(i != selected)
-						empatados[col_indexes[j]].push_back(alphabet[lowests[i]]);
-
-				solution[col_indexes[j]] = alphabet[lowests[selected]];
-			}
-		}
-		for(int i = 0; i < rows; i++)
-			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]])
-			{
-				faults[i] = faults[i] + 1;
-				if(faults[i] == columns - char_goal + 1)
-					row_validity[i] = false;
-			}
-			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]])
-			{
-				hits[i] = hits[i] + 1;
-				if(hits[i] == char_goal)
-				{
-					row_validity[i] = false;
-					accumulated_score++;
-				}
-			}
 	}
 }
 
@@ -483,14 +247,10 @@ int main(int argc, char* argv[])
 
 	float run_time = 0.1;
 	float probability = 0;
-	method = 0;
 
 	for(int i = 5; i < argc-1; i+=2){
-
 		if(strcmp(argv[i], "-p") == 0){
 			probability = stof(argv[i+1]);
-			if(probability > 0)
-				method = 1;
 		}
 		else if(strcmp(argv[i], "-t") == 0){
 			run_time = stof(argv[i+1]);
@@ -532,18 +292,9 @@ int main(int argc, char* argv[])
 	file.close();
 
 	float total = 0;
-
-	if(method == 0)
-		cout << "greedy" << endl;
-	else
-		cout << "pgreedy" << endl;
-
 	while(total < run_time)
 	{
-		if(method == 0)
-			greedy(sequences, rows, columns, solution);
-		else
-			pgreedy(sequences, rows, columns, solution, probability);
+		pgreedy(sequences, rows, columns, solution, probability);
 		
 		clock_t end = clock();
 		total = (float) (end - start) / CLOCKS_PER_SEC;
@@ -554,7 +305,7 @@ int main(int argc, char* argv[])
 			last_score = accumulated_score;
 		}
 
-		local_search_empates(sequences, rows, columns, solution);
+		local_search(sequences, rows, columns, solution);
 
 		end = clock();
 		total = (float) (end - start) / CLOCKS_PER_SEC;

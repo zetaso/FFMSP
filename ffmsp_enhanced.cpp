@@ -87,7 +87,36 @@ int check_score(char** sequences, int rows, int columns, char* solution)
 	return score;
 }
 
-void local_search(char** sequences, int rows, int columns, char* solution)
+int check_h(char** sequences, int rows, int columns, char* solution)
+{
+	vector<int> hd;
+	int h = 0;
+	int diff;
+
+	for(int i = 0; i < rows; i++)
+	{
+		diff = 0;
+		for(int j = 0; j < columns; j++)
+			if(sequences[i][col_indexes[j]] != solution[col_indexes[j]])
+				diff++;
+		if(diff >= char_goal)
+			h += diff;
+		else
+			hd.push_back(diff);
+	}
+
+	int max = 0;
+	for (int i = 0; i < hd.size(); ++i)
+	{
+		if(hd.at(i) > max)
+			max = hd.at(i);
+	}
+	h += max;
+
+	return h;
+}
+
+void zso_local_search(char** sequences, int rows, int columns, char* solution)
 {
 	int start = rand() % columns;
 	int end = (start + rand() % columns) % columns;
@@ -201,11 +230,9 @@ void local_search(char** sequences, int rows, int columns, char* solution)
 	}
 }
 
-void local_search_empates(char** sequences, int rows, int columns, char* solution)
+void local_search(char** sequences, int rows, int columns, char* solution)
 {
-	/* 
-		Recorre las posiciones j y cambia las posiciones que empataron por otra opción disponible
-	*/
+	// Recorre las posiciones j y cambia las posiciones que empataron por otra opción disponible
 	for(int j = 0; j < columns; j++)
 	{
 		if(empatados[col_indexes[j]].size() > 0)
@@ -252,7 +279,7 @@ void local_search_empates(char** sequences, int rows, int columns, char* solutio
 	}
 }
 
-void greedy(char** sequences, int rows, int columns, char* solution)
+void pgreedy(char** sequences, int rows, int columns, char* solution, float prob)
 {
 	//randomizar la forma en que se revisan las columnas
 	for(int j = 0; j < columns; j++)
@@ -372,102 +399,6 @@ void greedy(char** sequences, int rows, int columns, char* solution)
 	}
 }
 
-void pgreedy(char** sequences, int rows, int columns, char* solution, float prob)
-{
-	//randomizar la forma en que se revisan las columnas
-	for(int j = 0; j < columns; j++)
-	{
-		int rand_index = j + rand() % (columns - j);
-		int aux = col_indexes[j];
-		col_indexes[j] = col_indexes[rand_index];
-		col_indexes[rand_index] = aux;
-	}
-
-	//inicialización
-	for(int i = 0; i < rows; i++)
-	{
-		row_validity[i] = true;
-		faults[i] = 0;
-		hits[i] = 0;
-	}
-
-	//creación de una solución, columna por columna
-	accumulated_score = 0;
-	for(int j = 0; j < columns; j++)
-	{
-		double random = rand() / double(RAND_MAX);
-		if(random <= (double) prob)
-			solution[col_indexes[j]] = alphabet[rand() % 4];
-		else
-		{
-			bool found_by_metric = false;
-			if(j >= char_goal)
-			{
-				int scores[4];
-				for(int k = 0; k < 4; k++)
-				{
-					scores[k] = accumulated_score;
-					for(int i = 0; i < rows; i++)
-						if(row_validity[i] && alphabet[k] != sequences[i][col_indexes[j]] && hits[i] == char_goal - 1)
-							scores[k]++;
-				}
-				int highest_index = 0;
-				for(int i = 1; i < 4; i++)
-					if(scores[i] > scores[highest_index])
-						highest_index = i;
-				if(scores[highest_index] > accumulated_score)
-				{
-					solution[col_indexes[j]] = alphabet[highest_index];
-					found_by_metric = true;
-				}
-			}
-			if(!found_by_metric)
-			{
-				int instances[] = {0, 0, 0, 0};
-				for(int i = 0; i < rows; i++)
-					if(row_validity[i])
-						switch(sequences[i][col_indexes[j]])
-						{
-							case 'A':
-								instances[0]++;
-								break;
-							case 'C':
-								instances[1]++;
-								break;
-							case 'G':
-								instances[2]++;
-								break;
-							case 'T':
-								instances[3]++;
-								break;
-						}
-				int lowest_index = 0;
-				for(int i = 1; i < 4; i++)
-					if(instances[i] < instances[lowest_index])
-						lowest_index = i;
-				int lowests[4];
-				int equals = 0;
-				for(int i = 0; i < 4; i++)
-					if(instances[i] == instances[lowest_index])
-					{
-						lowests[equals] = i;
-						equals++;
-					}
-				int selected = rand() % equals;
-				solution[col_indexes[j]] = alphabet[lowests[selected]];
-			}
-		}
-		for(int i = 0; i < rows; i++)
-			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]] && ++faults[i] > columns - char_goal)
-				row_validity[i] = false;
-			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]] && ++hits[i] == char_goal)
-			{
-				row_validity[i] = false;
-				accumulated_score++;
-			}
-	}
-}
-
 int main(int argc, char* argv[])
 {
 	srand(time(NULL));
@@ -483,14 +414,10 @@ int main(int argc, char* argv[])
 
 	float run_time = 0.1;
 	float probability = 0;
-	method = 0;
 
 	for(int i = 5; i < argc-1; i+=2){
-
 		if(strcmp(argv[i], "-p") == 0){
 			probability = stof(argv[i+1]);
-			if(probability > 0)
-				method = 1;
 		}
 		else if(strcmp(argv[i], "-t") == 0){
 			run_time = stof(argv[i+1]);
@@ -532,18 +459,9 @@ int main(int argc, char* argv[])
 	file.close();
 
 	float total = 0;
-
-	if(method == 0)
-		cout << "greedy" << endl;
-	else
-		cout << "pgreedy" << endl;
-
 	while(total < run_time)
 	{
-		if(method == 0)
-			greedy(sequences, rows, columns, solution);
-		else
-			pgreedy(sequences, rows, columns, solution, probability);
+		pgreedy(sequences, rows, columns, solution, probability);
 		
 		clock_t end = clock();
 		total = (float) (end - start) / CLOCKS_PER_SEC;
@@ -552,17 +470,20 @@ int main(int argc, char* argv[])
 		{
 			cout << accumulated_score << " - " << fixed << setprecision(2) << total << endl;
 			last_score = accumulated_score;
-		}
 
-		local_search_empates(sequences, rows, columns, solution);
+			for (int i = 0; i < 1000; ++i)
+			{
+				zso_local_search(sequences, rows, columns, solution);
 
-		end = clock();
-		total = (float) (end - start) / CLOCKS_PER_SEC;
+				end = clock();
+				total = (float) (end - start) / CLOCKS_PER_SEC;
 
-		if(accumulated_score > last_score)
-		{
-			cout << accumulated_score << " - " << fixed << setprecision(2) << total << endl;
-			last_score = accumulated_score;
+				if(accumulated_score > last_score)
+				{
+					cout << accumulated_score << " - " << fixed << setprecision(2) << total << endl;
+					last_score = accumulated_score;
+				}
+			}
 		}
 	}
 

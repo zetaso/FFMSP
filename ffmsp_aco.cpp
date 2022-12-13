@@ -24,6 +24,9 @@ int *hits;				//array que contiene la cantidad de aciertos (caracteres distintos
 
 vector<char> *empatados;
 
+float base_pheromone = 1;
+float delta_pheromone = 0.2;
+
 int check_args(int argc, char* argv[])
 {
 	if(argc < 5)
@@ -79,388 +82,121 @@ int check_score(char** sequences, int rows, int columns, char* solution)
 	{
 		diff = 0;
 		for(int j = 0; j < columns; j++)
-			if(sequences[i][col_indexes[j]] != solution[col_indexes[j]])
+			if(sequences[i][j] != solution[j])
+			{
 				diff++;
-		if(diff >= char_goal)
-			score++;
-	}	
+				if(diff >= char_goal)
+				{
+					score++;
+					break;
+				}
+			}
+	}
 	return score;
 }
 
-void local_search(char** sequences, int rows, int columns, char* solution)
+void copy_into(char* src, char* dst, int columns)
 {
-	int start = rand() % columns;
-	int end = (start + rand() % columns) % columns;
-
-
-	//	AL DESCOMENTAR (y debugear) SE RECONSTRUIRÁ ESTA PARTE DE LA SOLUCION EN ORDEN ALEATORIO
-	//	FIXEAR ESTE CODIGO:
-	/*
-	//randomizar la forma en que se revisan las columnas
-	for(int j = 0; j < columns; j++)
-		col_indexes[j] = j;
-	for(int j = 0; j < columns; j++)
-	{
-		int rand_index = j + rand() % (columns - j);
-		int aux = col_indexes[j];
-		col_indexes[j] = col_indexes[rand_index];
-		col_indexes[rand_index] = aux;
-	}
-	*/
-
-	// Revertimos la métrica
-	for(int j = start; j != end; j = (j + 1) % columns)
-	{
-		for(int i = 0; i < rows; i++)
-		{
-			if(sequences[i][j] == solution[j])
-			{
-				faults[i]--;
-				if(!row_validity[i] && hits[i] < char_goal && faults[i] <= columns - char_goal)
-					row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
-			}
-			else
-			{
-				hits[i]--;
-				if(!row_validity[i] && hits[i] < char_goal && hits[i] < char_goal)
-				{
-					row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
-					accumulated_score--;
-				}
-			}
-		}
-	}
-
-	//edición de la solución, columna por columna
-	for(int j = start; j != end; j = (j + 1) % columns)
-	{
-		bool found_by_metric = false;
-		if(j >= char_goal)
-		{
-			int scores[4];
-			for(int k = 0; k < 4; k++)
-			{
-				scores[k] = accumulated_score;
-				for(int i = 0; i < rows; i++)
-					if(row_validity[i] && alphabet[k] != sequences[i][col_indexes[j]] && hits[i] >= char_goal - 1)
-						scores[k]++;
-			}
-			int highest_index = 0;
-			for(int i = 1; i < 4; i++)
-				if(scores[i] > scores[highest_index])
-					highest_index = i;
-			if(scores[highest_index] > accumulated_score)
-			{
-				solution[col_indexes[j]] = alphabet[highest_index];
-				found_by_metric = true;
-			}
-		}
-		if(!found_by_metric)
-		{
-			int instances[] = {0, 0, 0, 0};
-			for(int i = 0; i < rows; i++)
-				if(row_validity[i])
-					switch(sequences[i][col_indexes[j]])
-					{
-						case 'A':
-							instances[0]++;
-							break;
-						case 'C':
-							instances[1]++;
-							break;
-						case 'G':
-							instances[2]++;
-							break;
-						case 'T':
-							instances[3]++;
-							break;
-					}
-			int lowest_index = 0;
-			for(int i = 1; i < 4; i++)
-				if(instances[i] < instances[lowest_index])
-					lowest_index = i;
-			int lowests[4];
-			int equals = 0;
-			for(int i = 0; i < 4; i++)
-				if(instances[i] == instances[lowest_index])
-				{
-					lowests[equals] = i;
-					equals++;
-				}
-			int selected = rand() % equals;
-			solution[col_indexes[j]] = alphabet[lowests[selected]];
-		}
-		for(int i = 0; i < rows; i++)
-			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]] && ++faults[i] > columns - char_goal)
-				row_validity[i] = false;
-			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]] && ++hits[i] == char_goal)
-			{
-				row_validity[i] = false;
-				accumulated_score++;
-			}
-	}
+	for (int i = 0; i <= columns; i++)
+		dst[i] = src[i];
 }
 
-void local_search_empates(char** sequences, int rows, int columns, char* solution)
+void aco(char** sequences, int rows, int columns, float **pheromones, int prows, char **ants, int ants_count, float alpha, float beta, float rho, char* solution)
 {
-	/* 
-		Recorre las posiciones j y cambia las posiciones que empataron por otra opción disponible
-	*/
-	for(int j = 0; j < columns; j++)
+	// valor inicial feromonas
+	for(int i = 0; i < prows; i++)
+		for (int j = 0; j < columns; ++j)
+		pheromones[i][j] = base_pheromone;
+
+	// posicionar hormigas aleatoriamente
+	for (int i = 0; i < ants_count; ++i)
 	{
-		if(empatados[col_indexes[j]].size() > 0)
-		{
-			for(int i = 0; i < rows; i++)
-			{
-				if(sequences[i][col_indexes[j]] == solution[col_indexes[j]])
-				{
-					faults[i]--;
-					if(!row_validity[i] && hits[i] < char_goal && faults[i] <= columns - char_goal)
-						row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
-				}
-				else
-				{
-					hits[i]--;
-					if(!row_validity[i] && hits[i] < char_goal && hits[i] < char_goal)
-					{
-						row_validity[i] = true;	//vuelven a ser vigentes los indices de strings ya no listos ni descartados
-						accumulated_score--;
-					}
-				}
-			}
-
-			solution[col_indexes[j]] = empatados[col_indexes[j]].at(0);
-			empatados[col_indexes[j]].erase(empatados[col_indexes[j]].begin());
-
-			for(int i = 0; i < rows; i++)
-				if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]])
-				{
-					faults[i] = faults[i] + 1;
-					if(faults[i] > columns - char_goal)
-						row_validity[i] = false;
-				}
-				else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]])
-				{
-					hits[i] = hits[i] + 1;
-					if(hits[i] == char_goal)
-					{
-						row_validity[i] = false;
-						accumulated_score++;
-					}
-				}
-		}
-	}
-}
-
-void greedy(char** sequences, int rows, int columns, char* solution)
-{
-	//randomizar la forma en que se revisan las columnas
-	for(int j = 0; j < columns; j++)
-	{
-		int rand_index = j + rand() % (columns - j);
-		int aux = col_indexes[j];
-		col_indexes[j] = col_indexes[rand_index];
-		col_indexes[rand_index] = aux;
+		int r = rand() % 4;
+		ants[i][0] = alphabet[r];
+		// actualizar feromona en esa posición
+		pheromones[r][0] += delta_pheromone;
 	}
 
-	//inicialización
-	for(int i = 0; i < rows; i++)
+	// ciclo de steps
+	for (int j = 1; j < columns; ++j)
 	{
-		row_validity[i] = true;
-		faults[i] = 0;
-		hits[i] = 0;
-	}
+		// calculo de la heurística
 
-	//creación de una solución, columna por columna
-	accumulated_score = 0;
-	for(int j = 0; j < columns; j++)
-	{
-		bool found_by_metric = false;
-		if(j >= char_goal)
-		{
-			int upgrades[4];
-			for(int k = 0; k < 4; k++)
-			{
-				upgrades[k] = 0;
-				for(int i = 0; i < rows; i++)
-					if(row_validity[i] && alphabet[k] != sequences[i][col_indexes[j]] && hits[i] + 1 >= char_goal)
-						upgrades[k]++;
-			}
-			int highest_index = 0;
-			for(int i = 1; i < 4; i++)
-				if(upgrades[i] > upgrades[highest_index])
-					highest_index = i;
-			int highests[4];
-			int equals = 0;
-			for(int i = 0; i < 4; i++)
-				if(upgrades[i] == upgrades[highest_index])
-				{
-					highests[equals] = i;
-					equals++;
-				}
-			if(upgrades[highest_index] > 0)
-			{
-				int selected = rand() % equals;
-				solution[col_indexes[j]] = alphabet[highests[selected]];
-				found_by_metric = true;
-			}
-		}
-
-		if(!found_by_metric)
-		{
-			int instances[] = {0, 0, 0, 0};
-			for(int i = 0; i < rows; i++)
-				if(row_validity[i])
-					switch(sequences[i][col_indexes[j]])
-					{
-						case 'A':
-							instances[0]++;
-							break;
-						case 'C':
-							instances[1]++;
-							break;
-						case 'G':
-							instances[2]++;
-							break;
-						case 'T':
-							instances[3]++;
-							break;
-					}
-			int lowest_index = 0;
-			for(int i = 1; i < 4; i++)
-				if(instances[i] < instances[lowest_index])
-					lowest_index = i;
-			int lowests[4];
-			int equals = 0;
-			for(int i = 0; i < 4; i++)
-				if(instances[i] == instances[lowest_index])
-				{
-					lowests[equals] = i;
-					equals++;
-				}
-			int selected = rand() % equals;
-
-			empatados[col_indexes[j]].clear();
-			for(int i = 0; i < equals; i++)
-				if(i != selected)
-					empatados[col_indexes[j]].push_back(alphabet[lowests[i]]);
-
-			solution[col_indexes[j]] = alphabet[lowests[selected]];
-		}
-
+			// contar la aparicion de cada letra
+		int instances[] = {0, 0, 0, 0};
 		for(int i = 0; i < rows; i++)
-			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]])
+			switch(sequences[i][j])
 			{
-				faults[i] = faults[i] + 1;
-				if(faults[i] == columns - char_goal + 1)
-					row_validity[i] = false;
+				case 'A':
+					instances[0]++;
+					break;
+				case 'C':
+					instances[1]++;
+					break;
+				case 'G':
+					instances[2]++;
+					break;
+				case 'T':
+					instances[3]++;
+					break;
 			}
-			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]])
-			{
-				hits[i] = hits[i] + 1;
-				if(hits[i] == char_goal)
-				{
-					row_validity[i] = false;
-					accumulated_score++;
-				}
-			}
-	}
-}
 
-void pgreedy(char** sequences, int rows, int columns, char* solution, float prob)
-{
-	//randomizar la forma en que se revisan las columnas
-	for(int j = 0; j < columns; j++)
-	{
-		int rand_index = j + rand() % (columns - j);
-		int aux = col_indexes[j];
-		col_indexes[j] = col_indexes[rand_index];
-		col_indexes[rand_index] = aux;
-	}
+			// conversion de apariciones a heuristica para cada letra
+		float h_value[prows];
+		for(int i = 0; i < prows; i++)
+			h_value[i] = rows / (float) instances[i];
 
-	//inicialización
-	for(int i = 0; i < rows; i++)
-	{
-		row_validity[i] = true;
-		faults[i] = 0;
-		hits[i] = 0;
-	}
+			// calculo de la suma de pheromone * heuristic (DENOMINADOR)
+		float sum = 0;
+		for(int i = 0; i < prows; i++)
+			sum += pow(pheromones[i][j], alpha) * pow(h_value[i], beta);
 
-	//creación de una solución, columna por columna
-	accumulated_score = 0;
-	for(int j = 0; j < columns; j++)
-	{
-		double random = rand() / double(RAND_MAX);
-		if(random <= (double) prob)
-			solution[col_indexes[j]] = alphabet[rand() % 4];
-		else
+			// asignación de la probabilidad acumulada de cada letra
+		float probabilities[prows][2];
+		for (int i = 0; i < prows; ++i)
 		{
-			bool found_by_metric = false;
-			if(j >= char_goal)
-			{
-				int scores[4];
-				for(int k = 0; k < 4; k++)
-				{
-					scores[k] = accumulated_score;
-					for(int i = 0; i < rows; i++)
-						if(row_validity[i] && alphabet[k] != sequences[i][col_indexes[j]] && hits[i] == char_goal - 1)
-							scores[k]++;
-				}
-				int highest_index = 0;
-				for(int i = 1; i < 4; i++)
-					if(scores[i] > scores[highest_index])
-						highest_index = i;
-				if(scores[highest_index] > accumulated_score)
-				{
-					solution[col_indexes[j]] = alphabet[highest_index];
-					found_by_metric = true;
-				}
-			}
-			if(!found_by_metric)
-			{
-				int instances[] = {0, 0, 0, 0};
-				for(int i = 0; i < rows; i++)
-					if(row_validity[i])
-						switch(sequences[i][col_indexes[j]])
-						{
-							case 'A':
-								instances[0]++;
-								break;
-							case 'C':
-								instances[1]++;
-								break;
-							case 'G':
-								instances[2]++;
-								break;
-							case 'T':
-								instances[3]++;
-								break;
-						}
-				int lowest_index = 0;
-				for(int i = 1; i < 4; i++)
-					if(instances[i] < instances[lowest_index])
-						lowest_index = i;
-				int lowests[4];
-				int equals = 0;
-				for(int i = 0; i < 4; i++)
-					if(instances[i] == instances[lowest_index])
-					{
-						lowests[equals] = i;
-						equals++;
-					}
-				int selected = rand() % equals;
-				solution[col_indexes[j]] = alphabet[lowests[selected]];
-			}
+			// calculo del valor pheromone * heuristic de cada letra (NUMERADOR)
+			float prob = pow(pheromones[i][j], alpha) * pow(h_value[i], beta) / sum;
+			probabilities[i][0] = i > 0 ? probabilities[i - 1][1] : 0;
+			probabilities[i][1] = probabilities[i][0] + prob;
 		}
-		for(int i = 0; i < rows; i++)
-			if(row_validity[i] && sequences[i][col_indexes[j]] == solution[col_indexes[j]] && ++faults[i] > columns - char_goal)
-				row_validity[i] = false;
-			else if(row_validity[i] && sequences[i][col_indexes[j]] != solution[col_indexes[j]] && ++hits[i] == char_goal)
-			{
-				row_validity[i] = false;
-				accumulated_score++;
-			}
+
+		// por cada hormiga
+		for (int h = 0; h < ants_count; ++h)
+		{
+			double random = rand() / double(RAND_MAX);
+			// por cada letra
+			for (int i = 0; i < prows; ++i)
+				if(random <= (double) probabilities[i][1])
+				{
+					ants[h][j] = alphabet[i];
+					// actualizar feromona en esa posición
+					pheromones[i][j] += 0.1;
+					break;
+				}
+		}
 	}
+	
+	// actualizar feromonas
+	for (int i = 0; i < prows; ++i)
+		for (int j = 0; j < columns; ++j)
+		{
+			pheromones[i][j] *= (1 - rho) * pheromones[i][j] + rho * base_pheromone;
+		}
+
+	// actualizar solucion actual
+	int best_ant = 0;
+	int best_score = check_score(sequences, rows, columns, ants[best_ant]);
+	for (int h = 1; h < ants_count; ++h)
+	{
+		int current_score = check_score(sequences, rows, columns, ants[h]);
+		if(current_score > best_score)
+		{
+			best_ant = h;
+			best_score = current_score;
+		}
+	}
+	copy_into(ants[best_ant], solution, columns);
 }
 
 int main(int argc, char* argv[])
@@ -477,37 +213,33 @@ int main(int argc, char* argv[])
 	char_goal = int(stof(argv[4]) * columns);
 
 	float run_time = 0.1;
-	float probability = 0;
-	method = 0;
 
 	for(int i = 5; i < argc-1; i+=2){
-
-		if(strcmp(argv[i], "-p") == 0){
-			probability = stof(argv[i+1]);
-			if(probability > 0)
-				method = 1;
-		}
-		else if(strcmp(argv[i], "-t") == 0){
+		if(strcmp(argv[i], "-t") == 0){
 			run_time = stof(argv[i+1]);
 		}
-		else if(strcmp(argv[i], "-tuning") == 0){
-			tuning = atoi(argv[i+1]);
-		}
 	}
-
-	col_indexes = (int*) malloc(columns * sizeof(int));
-	for(int j = 0; j < columns; j++)
-		col_indexes[j] = j;
-
-	row_validity = (bool*) malloc(rows * sizeof(bool));
-	hits = (int*) malloc(columns * sizeof(int));
-	faults = (int*) malloc(columns * sizeof(int));
 
 	char **sequences = (char**) malloc(rows * sizeof(char*));
 	for (int i = 0; i < rows; ++i)
 		sequences[i] = (char*) malloc(columns * sizeof(char));
 
-	char *solution = (char*) malloc(columns * sizeof(char));
+	char *best_solution = (char*) malloc(columns * sizeof(char));
+	char *curr_solution = (char*) malloc(columns * sizeof(char));
+
+	float **pheromones = (float**) malloc(4 * sizeof(float*));
+	for (int i = 0; i < 4; ++i)
+		pheromones[i] = (float*) malloc(columns * sizeof(float));
+
+	int ant_count = 50;
+	float alpha = 1;
+	float beta = 1;
+	float rho = 0.1;
+	
+	char **ants = (char**) malloc(ant_count * sizeof(char*));
+	for (int i = 0; i < rows; ++i)
+		ants[i] = (char*) malloc(columns * sizeof(char));
+
 
 	empatados = new vector<char>[columns];
 
@@ -528,36 +260,23 @@ int main(int argc, char* argv[])
 
 	float total = 0;
 
-	if(method == 0)
-		cout << "greedy" << endl;
-	else
-		cout << "pgreedy" << endl;
+	int best_index;
+	float best_time;
 
 	while(total < run_time)
 	{
-		if(method == 0)
-			greedy(sequences, rows, columns, solution);
-		else
-			pgreedy(sequences, rows, columns, solution, probability);
-		
+		aco(sequences, rows, columns, pheromones, 4, ants, ant_count, alpha, beta, rho, curr_solution);
+
 		clock_t end = clock();
 		total = (float) (end - start) / CLOCKS_PER_SEC;
 
-		if(accumulated_score > last_score)
+		int curr_score = check_score(sequences, rows, columns, curr_solution);
+		if(curr_score > last_score)
 		{
-			cout << accumulated_score << " - " << fixed << setprecision(2) << total << endl;
-			last_score = accumulated_score;
-		}
-
-		local_search_empates(sequences, rows, columns, solution);
-
-		end = clock();
-		total = (float) (end - start) / CLOCKS_PER_SEC;
-
-		if(accumulated_score > last_score)
-		{
-			cout << accumulated_score << " - " << fixed << setprecision(2) << total << endl;
-			last_score = accumulated_score;
+			best_time = total;
+			cout << (int) curr_score << " - " << fixed << setprecision(2) << total << endl;
+			last_score = (int) curr_score;
+			copy_into(curr_solution, best_solution, columns);
 		}
 	}
 
@@ -569,8 +288,6 @@ int main(int argc, char* argv[])
 	for (int i = 0; i < rows; ++i)
 		free(sequences[i]);
 	free(sequences);
-
-	free(solution);
 
 	return 0;
 }
